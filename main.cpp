@@ -3,9 +3,25 @@
 #include <string>
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
+
+std::string trim_key(std::string str) {
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), str.end());
+    return str;
+}
 
 std::string process_message(const std::string& user_message, const std::string& api_key) {
+    if (api_key.empty()) {
+        return "Internal Error: API Key is completely empty inside the server.";
+    }
+
     std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + api_key;
+    
     crow::json::wvalue text_part;
     text_part["text"] = user_message;
     crow::json::wvalue content;
@@ -29,29 +45,27 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    // === 1. SANITY CHECK ROUTE ===
-    // If you go to https://ai-chatbot-cpp.onrender.com/ in your browser, you should see this text.
     CROW_ROUTE(app, "/")([]() {
         return "SUCCESS! The C++ backend has updated and is running!";
     });
 
-    // === 2. CHAT ROUTE ===
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)
     ([](const crow::request& req) {
         crow::response res;
         
-        // Universal CORS allowed for testing
         res.add_header("Access-Control-Allow-Origin", "*"); 
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.add_header("Access-Control-Allow-Headers", "Content-Type");
 
         if (req.method == crow::HTTPMethod::OPTIONS) {
             res.code = 204;
-            return res; // Safest return method for Crow
+            return res;
         }
 
         auto env_key = std::getenv("GEMINI_API_KEY");
-        std::string api_key = env_key ? env_key : "";
+        std::string api_key = env_key ? trim_key(std::string(env_key)) : "";
+
+       
 
         auto json_input = crow::json::load(req.body);
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
