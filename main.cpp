@@ -29,24 +29,22 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    // Notice we accept both POST and OPTIONS on this route
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         
-        // 1. Create a blank response object first
         crow::response res;
         
-        // 2. Attach the CORS headers to EVERYTHING leaving this route
+        // Force the headers onto the response
         res.add_header("Access-Control-Allow-Origin", "*");
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-        res.add_header("Access-Control-Allow-Headers", "Content-Type");
+        res.add_header("Access-Control-Allow-Headers", "*"); // Widened to allow all headers
 
-        // 3. If the browser is just sending a preflight check (OPTIONS), return 204 immediately
+        // Return a 200 OK so Crow doesn't strip our headers!
         if (req.method == crow::HTTPMethod::OPTIONS) {
-            res.code = 204;
+            res.code = 200;
+            res.body = "OK";
             return res;
         }
 
-        // 4. Otherwise, it is a POST request. Process the chat logic!
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
@@ -73,7 +71,6 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        // 5. Attach the generated JSON and return the success code
         res.code = 200;
         res.body = response_json.dump();
         return res;
