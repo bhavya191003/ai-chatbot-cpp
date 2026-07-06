@@ -35,8 +35,10 @@ WORKDIR /app
 # Copy your C++ code into the container
 COPY main.cpp .
 
-# Compile the server
-RUN g++ -std=c++17 main.cpp -o server -lcpr -lcurl -lpthread
+# Compile the server with the necessary Asio flags
+# -DASIO_STANDALONE tells Crow to use the system Asio
+# -I/usr/include/asio ensures it finds the header file
+RUN g++ -std=c++17 main.cpp -o server -DASIO_STANDALONE -I/usr/include/asio -lcpr -lcurl -lpthread
 
 # Expose the port your app runs on
 EXPOSE 8000
