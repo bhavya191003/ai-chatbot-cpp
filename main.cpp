@@ -4,15 +4,20 @@
 #include <cstdlib>
 #include <iostream>
 
+// --- THE HEADER WRAPPER ---
+crow::response add_cors(crow::response res) {
+    res.add_header("Access-Control-Allow-Origin", "*");
+    res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.add_header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
+    return res;
+}
+
 std::string process_message(const std::string& user_message, const std::string& api_key) {
     std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + api_key;
-
     crow::json::wvalue text_part;
     text_part["text"] = user_message;
-
     crow::json::wvalue content;
     content["parts"] = crow::json::wvalue::list({text_part});
-
     crow::json::wvalue gemini_req;
     gemini_req["contents"] = crow::json::wvalue::list({content});
 
@@ -26,7 +31,6 @@ std::string process_message(const std::string& user_message, const std::string& 
             return gemini_res["candidates"][0]["content"]["parts"][0]["text"].s();
         }
     }
-
     return "API Error (" + std::to_string(r.status_code) + "): " + r.text;
 }
 
@@ -35,27 +39,18 @@ int main() {
 
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         
-        // 1. THE BULLETPROOF PREFLIGHT: Authorize EVERY header the browser asks for
-       if (req.method == crow::HTTPMethod::OPTIONS) {
-            crow::response res(200, "OK"); 
-            res.add_header("Access-Control-Allow-Origin", "*");
-            res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE");
-            res.add_header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, Origin");
-            res.add_header("Access-Control-Max-Age", "86400"); // Tells browser to cache this "Yes" for 24 hours
-            return res;
+        // 1. Preflight
+        if (req.method == crow::HTTPMethod::OPTIONS) {
+            return add_cors(crow::response(204));
         }
 
-        // 2. THE ACTUAL POST REQUEST
+        // 2. Chat logic
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
         auto json_input = crow::json::load(req.body);
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
-            crow::json::wvalue err_res;
-            err_res["bot_reply"] = "Error: Invalid request payload.";
-            crow::response res(400, err_res);
-            res.add_header("Access-Control-Allow-Origin", "*");
-            return res;
+            return add_cors(crow::response(400, "Invalid payload"));
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -74,14 +69,10 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        crow::response res(response_json);
-        res.add_header("Access-Control-Allow-Origin", "*");
-        return res;
+        return add_cors(crow::response(response_json));
     });
 
-    // 3. RENDER PORT BINDING
     auto port_env = std::getenv("PORT");
     uint16_t port = port_env ? std::stoi(port_env) : 8000;
-    
     app.port(port).bindaddr("0.0.0.0").multithreaded().run();
 }
