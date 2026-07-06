@@ -29,20 +29,19 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
+    // Notice the updated signature: (const crow::request& req, crow::response& res)
+    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req, crow::response& res) {
         
-        crow::response res;
-        
-        // Force the headers onto the response
+        // Attach headers directly to the referenced response object
         res.add_header("Access-Control-Allow-Origin", "*");
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-        res.add_header("Access-Control-Allow-Headers", "*"); // Widened to allow all headers
+        res.add_header("Access-Control-Allow-Headers", "*"); 
 
-        // Return a 200 OK so Crow doesn't strip our headers!
+        // Handle the preflight immediately and end the response
         if (req.method == crow::HTTPMethod::OPTIONS) {
             res.code = 200;
-            res.body = "OK";
-            return res;
+            res.end();
+            return;
         }
 
         auto env_key = std::getenv("GEMINI_API_KEY");
@@ -52,7 +51,8 @@ int main() {
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
             res.code = 400;
             res.body = "Invalid payload";
-            return res;
+            res.end();
+            return;
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -73,7 +73,7 @@ int main() {
 
         res.code = 200;
         res.body = response_json.dump();
-        return res;
+        res.end(); // explicitly tell Crow we are done
     });
 
     auto port_env = std::getenv("PORT");
