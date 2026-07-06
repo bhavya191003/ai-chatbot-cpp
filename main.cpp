@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <iostream>
 
-// --- THE HEADER WRAPPER ---
 crow::response add_cors(crow::response res) {
     res.add_header("Access-Control-Allow-Origin", "*");
     res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -39,7 +38,7 @@ int main() {
 
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         
-        // 1. Preflight
+        // 1. FIXED: Apply add_cors to the preflight response
         if (req.method == crow::HTTPMethod::OPTIONS) {
             return add_cors(crow::response(204));
         }
