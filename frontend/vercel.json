@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/chat",
+      "destination": "https://ai-chatbot-cpp.onrender.com/chat"
+    }
+  ]
+}

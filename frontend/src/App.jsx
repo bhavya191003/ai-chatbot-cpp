@@ -25,16 +25,18 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      // 1. We completely remove the VITE_API_URL logic
+      // 2. We ask the browser to fetch from the local /api/chat tunnel
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        // Notice we removed mode: 'cors' because it's no longer cross-origin!
+        body: JSON.stringify({ user_message: input, mode: mode })
+      });
 
-      const response = await fetch(`${API_URL}/chat`, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    mode: 'cors', // Explicitly tell the browser this is a CORS request
-    body: JSON.stringify({ user_message: input, mode: mode })
-});
+  
 
       if (response.ok) {
         const data = await response.json();
