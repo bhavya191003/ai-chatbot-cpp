@@ -3,7 +3,7 @@ import { marked } from 'marked';
 
 export default function App() {
   const [messages, setMessages] = useState([
-    { text: "Hello! I am connected to your C++ server. What's on your mind?", sender: 'bot' }
+    { text: "hey there ! What's on your mind?", sender: 'bot' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
