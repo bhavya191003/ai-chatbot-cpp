@@ -40,9 +40,8 @@ int main() {
         
         // 1. FIXED: Apply add_cors to the preflight response
         if (req.method == crow::HTTPMethod::OPTIONS) {
-            return add_cors(crow::response(204));
-        }
-
+    return add_cors(crow::response(200));
+}
         // 2. Chat logic
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
