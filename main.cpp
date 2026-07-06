@@ -29,21 +29,23 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    // Notice the updated signature: (const crow::request& req, crow::response& res)
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req, crow::response& res) {
+    // By passing 'res' into the arguments, Crow manages the response cleanly
+    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)
+    ([](const crow::request& req, crow::response& res) {
         
-        // Attach headers directly to the referenced response object
-        res.add_header("Access-Control-Allow-Origin", "*");
+        // 1. Add CORS headers to EVERY response immediately
+        res.add_header("Access-Control-Allow-Origin", "*"); // '*' allows any frontend testing, or put your Vercel URL
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-        res.add_header("Access-Control-Allow-Headers", "*"); 
+        res.add_header("Access-Control-Allow-Headers", "Content-Type");
 
-        // Handle the preflight immediately and end the response
+        // 2. Handle the preflight check
         if (req.method == crow::HTTPMethod::OPTIONS) {
-            res.code = 200;
-            res.end();
+            res.code = 204; // 204 is ideal for OPTIONS as it means "No Content"
+            res.end();      // Always end the response before returning
             return;
         }
 
+        // 3. Process your business logic
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
@@ -71,9 +73,10 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
+        // 4. Send successful response back to frontend
         res.code = 200;
         res.body = response_json.dump();
-        res.end(); // explicitly tell Crow we are done
+        res.end(); 
     });
 
     auto port_env = std::getenv("PORT");
