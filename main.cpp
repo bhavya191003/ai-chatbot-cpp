@@ -79,5 +79,8 @@ int main() {
         return res;
     });
 
-    app.port(8000).multithreaded().run();
+   auto port_env = std::getenv("PORT");
+    uint16_t port = port_env ? std::stoi(port_env) : 8000;
+    
+    app.port(port).bindaddr("0.0.0.0").multithreaded().run();
 }
