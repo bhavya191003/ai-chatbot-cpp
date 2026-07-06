@@ -36,11 +36,12 @@ int main() {
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         
         // 1. THE BULLETPROOF PREFLIGHT: Authorize EVERY header the browser asks for
-        if (req.method == crow::HTTPMethod::OPTIONS) {
-            crow::response res(204);
+       if (req.method == crow::HTTPMethod::OPTIONS) {
+            crow::response res(200, "OK"); 
             res.add_header("Access-Control-Allow-Origin", "*");
-            res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-            res.add_header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Origin, X-Requested-With");
+            res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE");
+            res.add_header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, Origin");
+            res.add_header("Access-Control-Max-Age", "86400"); // Tells browser to cache this "Yes" for 24 hours
             return res;
         }
 
