@@ -62,7 +62,7 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen w-full bg-[#11151c] font-sans text-white overflow-hidden">
       <div className="flex justify-between items-center p-4 bg-[#11151c] border-b border-gray-800 shrink-0">
-        <h1 className="text-xl font-bold tracking-wide">C++ AI Backend</h1>
+        <h1 className="text-xl font-bold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Bhavya's AI Assistant</h1>
         <button 
           onClick={toggleMode}
           className={`px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-md ${
