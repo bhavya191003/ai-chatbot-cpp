@@ -33,7 +33,7 @@ export default function App() {
         'Content-Type': 'application/json',
     },
     mode: 'cors', // Explicitly tell the browser this is a CORS request
-    body: JSON.stringify({ user_message: input, mode: 'chat' })
+    body: JSON.stringify({ user_message: input, mode: mode })
 });
 
       if (response.ok) {
