@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 # Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools, git, python3 (needed to merge Crow), and cURL dependencies
+# Install build tools, git, python3, asio, and cURL dependencies
 RUN apt-get update && apt-get install -y \
     g++ \
     cmake \
@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     libssl-dev \
     libcurl4-openssl-dev \
+    libasio-dev \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
