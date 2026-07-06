@@ -25,18 +25,13 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      // 1. We completely remove the VITE_API_URL logic
-      // 2. We ask the browser to fetch from the local /api/chat tunnel
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        // Notice we removed mode: 'cors' because it's no longer cross-origin!
-        body: JSON.stringify({ user_message: input, mode: mode })
+        body: JSON.stringify({ user_message: userMsg, mode: mode })
       });
-
-  
 
       if (response.ok) {
         const data = await response.json();
@@ -49,7 +44,7 @@ export default function App() {
         setMessages(prev => [...prev, { text: `Server Error: ${response.status}`, sender: 'bot', type: 'text' }]);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { text: "Error: Could not connect to the C++ server. Is it running?", sender: 'bot', type: 'text' }]);
+      setMessages(prev => [...prev, { text: "Error: Could not connect to the server.", sender: 'bot', type: 'text' }]);
     } finally {
       setIsLoading(false);
     }
@@ -60,67 +55,123 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#11151c] font-sans text-white overflow-hidden">
-      <div className="flex justify-between items-center p-4 bg-[#11151c] border-b border-gray-800 shrink-0">
-        <h1 className="text-xl font-bold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Bhavya's AI Assistant</h1>
+    <div className="flex flex-col h-screen w-full bg-[#050505] text-slate-200 font-sans overflow-hidden relative selection:bg-indigo-500/30">
+      
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 blur-[120px] rounded-full animate-pulse-slow pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-fuchsia-600/20 blur-[120px] rounded-full animate-pulse-slow pointer-events-none" style={{ animationDelay: '2s' }}></div>
+
+      <header className="flex items-center justify-between px-6 py-4 bg-black/20 backdrop-blur-xl border-b border-white/5 z-20">
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-lg shadow-indigo-500/20">
+            <div className="absolute inset-0 bg-white/20 rounded-xl blur-sm"></div>
+            <svg className="w-5 h-5 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <h1 className="text-xl font-extrabold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-fuchsia-300 drop-shadow-sm">
+            Bhavya's AI Assistant
+          </h1>
+        </div>
+        
         <button 
           onClick={toggleMode}
-          className={`px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-md ${
+          className={`relative overflow-hidden px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ease-out shadow-lg hover:scale-105 active:scale-95 ${
             mode === 'chat' 
-              ? 'bg-gray-600 hover:bg-gray-500 text-white' 
-              : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white'
+              ? 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10' 
+              : 'bg-gradient-to-r from-rose-500 to-orange-500 text-white shadow-rose-500/25 border border-rose-400/50'
           }`}
         >
-          {mode === 'chat' ? '💬 Chat Mode' : '🎨 Image Mode'}
+          <span className="relative z-10 flex items-center gap-2">
+            {mode === 'chat' ? '💬 Chat Mode' : '✨ Image Mode'}
+          </span>
         </button>
-      </div>
+      </header>
       
-      <div ref={chatWindowRef} className="flex-1 overflow-y-auto p-6 flex flex-col items-center w-full">
-        <div className="w-full max-w-4xl flex flex-col gap-6">
+      <main ref={chatWindowRef} className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center w-full z-10 custom-scrollbar scroll-smooth">
+        <div className="w-full max-w-4xl flex flex-col gap-6 pb-20">
           {messages.map((msg, idx) => (
             <div 
               key={idx} 
-              className={`p-4 max-w-[75%] leading-relaxed text-sm break-words ${
-                msg.sender === 'user' 
-                  ? 'bg-[#2563eb] text-white self-end rounded-2xl rounded-br-sm shadow-md' 
-                  : 'bg-[#1e2430] text-gray-200 self-start rounded-2xl rounded-tl-sm shadow-sm'
-              }`}
+              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
             >
-              {msg.type === 'image' ? (
-                <img src={msg.text} alt="Generated Content" className="rounded-lg w-full h-auto mt-2 mb-2" />
-              ) : msg.sender === 'bot' ? (
-                <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} className="prose prose-invert max-w-none" />
-              ) : (
-                msg.text
-              )}
+              <div 
+                className={`px-6 py-4 max-w-[85%] sm:max-w-[75%] text-[15px] shadow-2xl transition-all duration-300 ${
+                  msg.sender === 'user' 
+                    ? 'bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-3xl rounded-br-sm shadow-indigo-900/50 border border-indigo-400/20' 
+                    : 'bg-[#111111]/80 backdrop-blur-xl border border-white/10 text-slate-200 rounded-3xl rounded-tl-sm shadow-black/50'
+                }`}
+              >
+                {msg.type === 'image' ? (
+                  <div className="relative group rounded-xl overflow-hidden bg-black/50">
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none"></div>
+                     <img src={msg.text} alt="AI Generated" className="rounded-xl w-full h-auto transform transition-transform duration-500 group-hover:scale-105" />
+                  </div>
+                ) : msg.sender === 'bot' ? (
+                  <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 max-w-none prose-a:text-indigo-400 hover:prose-a:text-indigo-300" />
+                ) : (
+                  <div className="break-words leading-relaxed font-medium">{msg.text}</div>
+                )}
+              </div>
             </div>
           ))}
+          
           {isLoading && (
-            <div className="text-sm text-gray-500 italic self-start bg-[#1e2430] p-4 rounded-2xl rounded-tl-sm shadow-sm">
-              {mode === 'image' ? 'Generating image...' : 'AI is thinking...'}
+            <div className="flex justify-start animate-slide-up">
+              <div className="px-6 py-5 bg-[#111111]/80 backdrop-blur-xl border border-white/10 rounded-3xl rounded-tl-sm flex items-center gap-2.5 shadow-2xl">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce-custom"></div>
+                <div className="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce-custom" style={{ animationDelay: '0.15s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-rose-500 animate-bounce-custom" style={{ animationDelay: '0.3s' }}></div>
+              </div>
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      <div className="p-6 w-full flex justify-center bg-[#11151c] shrink-0 border-t border-gray-800">
-        <div className="flex w-full max-w-4xl gap-4">
+      <footer className="absolute bottom-0 w-full p-4 sm:p-8 flex justify-center bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent z-20 pointer-events-none">
+        <div className="w-full max-w-4xl flex gap-3 relative pointer-events-auto group">
+          
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full blur opacity-25 group-focus-within:opacity-50 transition duration-500"></div>
+          
           <input 
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={mode === 'image' ? "Describe an image to generate..." : "Type your message..."} 
-            className="flex-1 bg-[#161b24] border border-gray-700 text-white rounded-full px-6 py-4 outline-none focus:border-gray-500 transition-colors placeholder-gray-500 text-sm shadow-inner"
+            placeholder={mode === 'image' ? "Describe an image to generate..." : "Ask me anything..."} 
+            className="relative flex-1 bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/10 text-white rounded-full px-8 py-4 outline-none focus:border-indigo-500/50 transition-all placeholder-slate-500 shadow-2xl text-[15px]"
           />
           <button 
             onClick={sendMessage}
-            className="bg-[#3b82f6] text-white border-none px-8 py-4 rounded-full cursor-pointer font-semibold hover:bg-blue-500 transition-colors shadow-md"
+            disabled={isLoading || !input.trim()}
+            className="relative bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:border-slate-700 text-white border border-indigo-400/30 px-6 rounded-full cursor-pointer transition-all duration-300 shadow-xl hover:shadow-indigo-500/25 flex items-center justify-center active:scale-95"
           >
-            Send
+            <svg className="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
           </button>
         </div>
-      </div>
+      </footer>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3f3f50; }
+        
+        @keyframes slideUp { 
+          0% { opacity: 0; transform: translateY(20px) scale(0.98); } 
+          100% { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes pulseSlow {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        .animate-pulse-slow { animation: pulseSlow 8s ease-in-out infinite; }
+
+        @keyframes bounceCustom {
+          0%, 100% { transform: translateY(0); opacity: 0.4; }
+          50% { transform: translateY(-4px); opacity: 1; }
+        }
+        .animate-bounce-custom { animation: bounceCustom 1s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+      `}} />
     </div>
   );
 }
