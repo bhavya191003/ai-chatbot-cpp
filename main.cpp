@@ -1,4 +1,5 @@
 #include <crow.h>
+#include <crow/middlewares/cors.h>
 #include <cpr/cpr.h>
 #include <string>
 #include <cstdlib>
@@ -31,20 +32,19 @@ std::string process_message(const std::string& user_message, const std::string& 
 }
 
 int main() {
-    crow::SimpleApp app;
+    // 1. Enable the official CORS Middleware for the entire application
+    crow::App<crow::CORSHandler> app;
+    
+    // 2. Configure the Middleware to aggressively allow everything
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+    cors
+      .global()
+      .headers("Origin", "Content-Type", "Accept")
+      .methods("POST"_method, "OPTIONS"_method)
+      .origin("*");
 
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
-        
-        // 1. Force a 200 OK with a body so Render's proxy does NOT strip the CORS headers
-        if (req.method == crow::HTTPMethod::OPTIONS) {
-            crow::response res(200, "OK"); 
-            res.add_header("Access-Control-Allow-Origin", "*");
-            res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-            res.add_header("Access-Control-Allow-Headers", "Content-Type");
-            return res;
-        }
-
-        // 2. Handle actual POST request
+    // 3. Our Route (Now completely stripped of manual CORS hacks)
+    CROW_ROUTE(app, "/chat").methods("POST"_method)([](const crow::request& req) {
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
@@ -52,9 +52,7 @@ int main() {
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
             crow::json::wvalue err_res;
             err_res["bot_reply"] = "Error: Invalid request payload.";
-            crow::response res(400, err_res);
-            res.add_header("Access-Control-Allow-Origin", "*");
-            return res;
+            return crow::response(400, err_res);
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -73,11 +71,10 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        crow::response res(response_json);
-        res.add_header("Access-Control-Allow-Origin", "*");
-        return res;
+        return crow::response(response_json);
     });
 
+    // 4. Port binding for Render
     auto port_env = std::getenv("PORT");
     uint16_t port = port_env ? std::stoi(port_env) : 8000;
     
