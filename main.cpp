@@ -1,15 +1,12 @@
 #include <crow.h>
+#include <crow/middlewares/cors.h> // 1. Include the native CORS header
 #include <cpr/cpr.h>
 #include <string>
 #include <cstdlib>
 #include <iostream>
 
-crow::response add_cors(crow::response res) {
-    res.add_header("Access-Control-Allow-Origin", "*");
-    res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.add_header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
-    return res;
-}
+// Note: The custom add_cors helper function has been completely removed 
+// since the global middleware injects headers automatically.
 
 std::string process_message(const std::string& user_message, const std::string& api_key) {
     std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + api_key;
@@ -34,21 +31,24 @@ std::string process_message(const std::string& user_message, const std::string& 
 }
 
 int main() {
-    crow::SimpleApp app;
+    // 2. Change crow::SimpleApp to crow::App with the CORSHandler middleware
+    crow::App<crow::CORSHandler> app;
 
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
-        
-        // 1. FIXED: Apply add_cors to the preflight response
-        if (req.method == crow::HTTPMethod::OPTIONS) {
-    return add_cors(crow::response(200));
-}
-        // 2. Chat logic
+    // 3. Configure the CORS rules globally
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+    cors.global()
+        .origin("*")
+        .methods("POST"_method, "OPTIONS"_method)
+        .headers("Content-Type", "Accept", "Authorization");
+
+    // 4. Keep your route focused strictly on handling your POST data
+    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST)([](const crow::request& req) {
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
         auto json_input = crow::json::load(req.body);
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
-            return add_cors(crow::response(400, "Invalid payload"));
+            return crow::response(400, "Invalid payload");
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -67,7 +67,7 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        return add_cors(crow::response(response_json));
+        return crow::response(response_json);
     });
 
     auto port_env = std::getenv("PORT");
