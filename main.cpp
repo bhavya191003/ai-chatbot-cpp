@@ -57,8 +57,9 @@ int main() {
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.add_header("Access-Control-Allow-Headers", "Content-Type");
 
-        if (req.method == crow::HTTPMethod::OPTIONS) {
-            res.code = 204;
+       if (req.method == crow::HTTPMethod::OPTIONS) {
+            res.code = 200; // Force 200 OK so Render doesn't strip the headers
+            res.body = "OK"; 
             return res;
         }
 
