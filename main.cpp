@@ -29,32 +29,35 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    // By passing 'res' into the arguments, Crow manages the response cleanly
+    // === 1. SANITY CHECK ROUTE ===
+    // If you go to https://ai-chatbot-cpp.onrender.com/ in your browser, you should see this text.
+    CROW_ROUTE(app, "/")([]() {
+        return "SUCCESS! The C++ backend has updated and is running!";
+    });
+
+    // === 2. CHAT ROUTE ===
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)
-    ([](const crow::request& req, crow::response& res) {
+    ([](const crow::request& req) {
+        crow::response res;
         
-        // 1. Add CORS headers to EVERY response immediately
-        res.add_header("Access-Control-Allow-Origin", "*"); // '*' allows any frontend testing, or put your Vercel URL
+        // Universal CORS allowed for testing
+        res.add_header("Access-Control-Allow-Origin", "*"); 
         res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.add_header("Access-Control-Allow-Headers", "Content-Type");
 
-        // 2. Handle the preflight check
         if (req.method == crow::HTTPMethod::OPTIONS) {
-            res.code = 204; // 204 is ideal for OPTIONS as it means "No Content"
-            res.end();      // Always end the response before returning
-            return;
+            res.code = 204;
+            return res; // Safest return method for Crow
         }
 
-        // 3. Process your business logic
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
         auto json_input = crow::json::load(req.body);
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
             res.code = 400;
-            res.body = "Invalid payload";
-            res.end();
-            return;
+            res.body = R"({"error": "Invalid payload"})";
+            return res;
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -73,10 +76,9 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        // 4. Send successful response back to frontend
         res.code = 200;
         res.body = response_json.dump();
-        res.end(); 
+        return res;
     });
 
     auto port_env = std::getenv("PORT");
