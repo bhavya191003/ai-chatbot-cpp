@@ -28,10 +28,13 @@ export default function App() {
       const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
       const response = await fetch(`${API_URL}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_message: userMsg, mode: mode })
-      });
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    mode: 'cors', // Explicitly tell the browser this is a CORS request
+    body: JSON.stringify({ user_message: input, mode: 'chat' })
+});
 
       if (response.ok) {
         const data = await response.json();
