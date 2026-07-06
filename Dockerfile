@@ -4,17 +4,18 @@ FROM ubuntu:22.04
 # Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools, git, and cURL dependencies
+# Install build tools, git, python3 (needed to merge Crow), and cURL dependencies
 RUN apt-get update && apt-get install -y \
     g++ \
     cmake \
     git \
+    python3 \
     libssl-dev \
     libcurl4-openssl-dev \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and build the CPR library from source
+# 1. Download and build the CPR library from source
 RUN git clone https://github.com/libcpr/cpr.git /cpr \
     && cd /cpr \
     && mkdir build && cd build \
@@ -22,16 +23,18 @@ RUN git clone https://github.com/libcpr/cpr.git /cpr \
     && make \
     && make install
 
-# Set our working directory inside the container
-WORKDIR /app
+# 2. Clone Crow and generate the 'crow_all.h' header file
+RUN git clone https://github.com/CrowCpp/Crow.git /crow \
+    && cd /crow/scripts \
+    && python3 merge_all.py ../include /usr/include/crow.h
 
-# Download the header-only Crow framework
-RUN wget https://github.com/CrowCpp/Crow/releases/latest/download/crow_all.h -O /usr/include/crow.h
+# Set our working directory
+WORKDIR /app
 
 # Copy your C++ code into the container
 COPY main.cpp .
 
-# Compile the server (linking curl, cpr, and pthread)
+# Compile the server
 RUN g++ -std=c++17 main.cpp -o server -lcpr -lcurl -lpthread
 
 # Expose the port your app runs on
