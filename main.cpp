@@ -33,6 +33,8 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
+    // --- 1. THE PREFLIGHT CORS HANDLER ---
+    // The browser needs this route to approve the connection
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         crow::response res(204);
         res.add_header("Access-Control-Allow-Origin", "*");
@@ -41,6 +43,7 @@ int main() {
         return res;
     });
 
+    // --- 2. THE MAIN CHAT HANDLER ---
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST)([](const crow::request& req) {
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
