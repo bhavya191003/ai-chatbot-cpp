@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/chat': 'http://127.0.0.1:8000' // This line intercepts the request and forwards it to C++
+      '/chat': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      }
     }
   }
 })

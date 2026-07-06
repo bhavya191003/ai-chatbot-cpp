@@ -5,7 +5,7 @@
 #include <iostream>
 
 std::string process_message(const std::string& user_message, const std::string& api_key) {
-    std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=" + api_key;
+    std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + api_key;
     
     crow::json::wvalue text_part;
     text_part["text"] = user_message;
@@ -27,58 +27,40 @@ std::string process_message(const std::string& user_message, const std::string& 
         }
     }
     
-    CROW_LOG_ERROR << "Gemini API Failed. Status: " << r.status_code << " | Response: " << r.text;
-    
-    return "Error: Could not reach the AI. Status code: " + std::to_string(r.status_code);
+    return "API Error (" + std::to_string(r.status_code) + "): " + r.text;
 }
 
 int main() {
-    const char* key_ptr = std::getenv("GEMINI_API_KEY");
-    if (key_ptr == nullptr) {
-        std::cerr << "Error: GEMINI_API_KEY is not set!" << std::endl;
-        return 1;
-    }
-    std::string api_key(key_ptr);
-
     crow::SimpleApp app;
 
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([&api_key](const crow::request& req) {
-        if (req.method == crow::HTTPMethod::OPTIONS) {
-            crow::response res;
-            res.add_header("Access-Control-Allow-Origin", "*");
-            res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-            res.add_header("Access-Control-Allow-Headers", "Content-Type");
-            res.code = 204;
-            return res;
+    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST)([](const crow::request& req) {
+        auto env_key = std::getenv("GEMINI_API_KEY");
+        std::string api_key = env_key ? env_key : "";
+        
+        auto json_input = crow::json::load(req.body);
+        if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
+            crow::json::wvalue err_res;
+            err_res["bot_reply"] = "Error: Invalid request payload.";
+            return crow::response(400, err_res);
         }
 
-        auto x = crow::json::load(req.body);
-        if (!x || !x.has("user_message")) {
-            crow::response res;
-            res.code = 400;
-            return res;
-        }
-
-        std::string user_msg = x["user_message"].s();
-        std::string mode = (x.has("mode")) ? x["mode"].s() : std::string("chat");
-        crow::json::wvalue res_json;
+        std::string user_message = json_input["user_message"].s();
+        std::string mode = json_input["mode"].s();
+        crow::json::wvalue response_json;
 
         if (mode == "image") {
-            std::string encoded_prompt = user_msg;
+            std::string encoded_prompt = user_message;
             size_t pos = 0;
             while ((pos = encoded_prompt.find(" ", pos)) != std::string::npos) {
                  encoded_prompt.replace(pos, 1, "%20");
                  pos += 3;
             }
-            res_json["image_url"] = "https://image.pollinations.ai/prompt/" + encoded_prompt;
+            response_json["image_url"] = "https://image.pollinations.ai/prompt/" + encoded_prompt;
         } else {
-            res_json["bot_reply"] = process_message(user_msg, api_key);
+            response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        crow::response res(res_json.dump());
-        res.add_header("Access-Control-Allow-Origin", "*");
-        res.code = 200;
-        return res;
+        return crow::response(response_json);
     });
 
     app.port(8000).multithreaded().run();
