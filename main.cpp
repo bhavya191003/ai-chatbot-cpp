@@ -33,19 +33,18 @@ std::string process_message(const std::string& user_message, const std::string& 
 int main() {
     crow::SimpleApp app;
 
-    // COMBINED ROUTE: Handles both the OPTIONS preflight and the POST request securely
     CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
         
-        // 1. Handle the browser's CORS preflight check instantly
+        // 1. Force a 200 OK with a body so Render's proxy does NOT strip the CORS headers
         if (req.method == crow::HTTPMethod::OPTIONS) {
-            crow::response res(200);
+            crow::response res(200, "OK"); 
             res.add_header("Access-Control-Allow-Origin", "*");
             res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
             res.add_header("Access-Control-Allow-Headers", "Content-Type");
             return res;
         }
 
-        // 2. Handle the actual chat message (POST)
+        // 2. Handle actual POST request
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
@@ -79,7 +78,7 @@ int main() {
         return res;
     });
 
-   auto port_env = std::getenv("PORT");
+    auto port_env = std::getenv("PORT");
     uint16_t port = port_env ? std::stoi(port_env) : 8000;
     
     app.port(port).bindaddr("0.0.0.0").multithreaded().run();
