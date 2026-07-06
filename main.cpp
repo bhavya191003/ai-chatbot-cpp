@@ -1,12 +1,8 @@
 #include <crow.h>
-#include <crow/middlewares/cors.h> // 1. Include the native CORS header
 #include <cpr/cpr.h>
 #include <string>
 #include <cstdlib>
 #include <iostream>
-
-// Note: The custom add_cors helper function has been completely removed 
-// since the global middleware injects headers automatically.
 
 std::string process_message(const std::string& user_message, const std::string& api_key) {
     std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + api_key;
@@ -31,24 +27,34 @@ std::string process_message(const std::string& user_message, const std::string& 
 }
 
 int main() {
-    // 2. Change crow::SimpleApp to crow::App with the CORSHandler middleware
-    crow::App<crow::CORSHandler> app;
+    crow::SimpleApp app;
 
-    // 3. Configure the CORS rules globally
-    auto& cors = app.get_middleware<crow::CORSHandler>();
-    cors.global()
-        .origin("*")
-        .methods("POST"_method, "OPTIONS"_method)
-        .headers("Content-Type", "Accept", "Authorization");
+    // Notice we accept both POST and OPTIONS on this route
+    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST, crow::HTTPMethod::OPTIONS)([](const crow::request& req) {
+        
+        // 1. Create a blank response object first
+        crow::response res;
+        
+        // 2. Attach the CORS headers to EVERYTHING leaving this route
+        res.add_header("Access-Control-Allow-Origin", "*");
+        res.add_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.add_header("Access-Control-Allow-Headers", "Content-Type");
 
-    // 4. Keep your route focused strictly on handling your POST data
-    CROW_ROUTE(app, "/chat").methods(crow::HTTPMethod::POST)([](const crow::request& req) {
+        // 3. If the browser is just sending a preflight check (OPTIONS), return 204 immediately
+        if (req.method == crow::HTTPMethod::OPTIONS) {
+            res.code = 204;
+            return res;
+        }
+
+        // 4. Otherwise, it is a POST request. Process the chat logic!
         auto env_key = std::getenv("GEMINI_API_KEY");
         std::string api_key = env_key ? env_key : "";
 
         auto json_input = crow::json::load(req.body);
         if (!json_input || !json_input.has("user_message") || !json_input.has("mode")) {
-            return crow::response(400, "Invalid payload");
+            res.code = 400;
+            res.body = "Invalid payload";
+            return res;
         }
 
         std::string user_message = json_input["user_message"].s();
@@ -67,7 +73,10 @@ int main() {
             response_json["bot_reply"] = process_message(user_message, api_key);
         }
 
-        return crow::response(response_json);
+        // 5. Attach the generated JSON and return the success code
+        res.code = 200;
+        res.body = response_json.dump();
+        return res;
     });
 
     auto port_env = std::getenv("PORT");
