@@ -3,9 +3,10 @@ import { marked } from 'marked';
 
 export default function App() {
   const [messages, setMessages] = useState([
-    { text: "hey there ! What's on your mind?", sender: 'bot' }
+    { text: "Hey there! What's on your mind?", sender: 'bot', type: 'text' }
   ]);
   const [input, setInput] = useState('');
+  const [mode, setMode] = useState('chat');
   const [isLoading, setIsLoading] = useState(false);
   const chatWindowRef = useRef(null);
 
@@ -19,107 +20,107 @@ export default function App() {
     if (!input.trim()) return;
     
     const userMsg = input.trim();
-    setMessages(prev => [...prev, { text: userMsg, sender: 'user' }]);
+    setMessages(prev => [...prev, { text: userMsg, sender: 'user', type: 'text' }]);
     setInput('');
     setIsLoading(true);
 
     try {
+      // 1. We completely remove the VITE_API_URL logic
+      // 2. We ask the browser to fetch from the local /api/chat tunnel
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ user_message: userMsg })
+        // Notice we removed mode: 'cors' because it's no longer cross-origin!
+        body: JSON.stringify({ user_message: input, mode: mode })
       });
+
+  
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(prev => [...prev, { text: data.bot_reply, sender: 'bot' }]);
+        if (mode === 'image' && data.image_url) {
+            setMessages(prev => [...prev, { text: data.image_url, sender: 'bot', type: 'image' }]);
+        } else {
+            setMessages(prev => [...prev, { text: data.bot_reply, sender: 'bot', type: 'text' }]);
+        }
       } else {
-        setMessages(prev => [...prev, { text: `Server Error: ${response.status}`, sender: 'bot' }]);
+        setMessages(prev => [...prev, { text: `Server Error: ${response.status}`, sender: 'bot', type: 'text' }]);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { text: "Error: Could not connect to the C++ server. Is it running?", sender: 'bot' }]);
+      setMessages(prev => [...prev, { text: "Error: Could not connect to the C++ server. Is it running?", sender: 'bot', type: 'text' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 font-sans selection:bg-purple-500/30 overflow-hidden relative">
-      <div className="absolute top-0 inset-x-0 h-full w-full bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.2),rgba(255,255,255,0))] pointer-events-none"></div>
+  const toggleMode = () => {
+    setMode(prev => prev === 'chat' ? 'image' : 'chat');
+  };
 
-      <header className="flex items-center justify-between px-8 py-5 backdrop-blur-md bg-slate-900/50 border-b border-white/10 z-10 shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-          </div>
-        <h1 className="text-xl font-bold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Bhavya's AI Assistant</h1>
-        </div>
-      </header>
+  return (
+    <div className="flex flex-col h-screen w-full bg-[#11151c] font-sans text-white overflow-hidden">
+      <div className="flex justify-between items-center p-4 bg-[#11151c] border-b border-gray-800 shrink-0">
+        <h1 className="text-xl font-bold tracking-wide">C++ AI Backend</h1>
+        <button 
+          onClick={toggleMode}
+          className={`px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-md ${
+            mode === 'chat' 
+              ? 'bg-gray-600 hover:bg-gray-500 text-white' 
+              : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white'
+          }`}
+        >
+          {mode === 'chat' ? '💬 Chat Mode' : '🎨 Image Mode'}
+        </button>
+      </div>
       
-      <main ref={chatWindowRef} className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center w-full z-10 scroll-smooth custom-scrollbar">
-        <div className="w-full max-w-3xl flex flex-col gap-6 pb-4">
+      <div ref={chatWindowRef} className="flex-1 overflow-y-auto p-6 flex flex-col items-center w-full">
+        <div className="w-full max-w-4xl flex flex-col gap-6">
           {messages.map((msg, idx) => (
             <div 
               key={idx} 
-              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+              className={`p-4 max-w-[75%] leading-relaxed text-sm break-words ${
+                msg.sender === 'user' 
+                  ? 'bg-[#2563eb] text-white self-end rounded-2xl rounded-br-sm shadow-md' 
+                  : 'bg-[#1e2430] text-gray-200 self-start rounded-2xl rounded-tl-sm shadow-sm'
+              }`}
             >
-              <div 
-                className={`px-5 py-4 max-w-[85%] sm:max-w-[75%] leading-relaxed text-[15px] shadow-sm ${
-                  msg.sender === 'user' 
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-3xl rounded-br-sm shadow-purple-500/10' 
-                    : 'bg-slate-800/80 backdrop-blur-md border border-white/10 text-slate-200 rounded-3xl rounded-tl-sm'
-                }`}
-              >
-                {msg.sender === 'bot' ? (
-                  <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-white/10 max-w-none" />
-                ) : (
-                  <div className="break-words">{msg.text}</div>
-                )}
-              </div>
+              {msg.type === 'image' ? (
+                <img src={msg.text} alt="Generated Content" className="rounded-lg w-full h-auto mt-2 mb-2" />
+              ) : msg.sender === 'bot' ? (
+                <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} className="prose prose-invert max-w-none" />
+              ) : (
+                msg.text
+              )}
             </div>
           ))}
           {isLoading && (
-            <div className="flex justify-start animate-fade-in-up">
-              <div className="px-5 py-5 bg-slate-800/80 backdrop-blur-md border border-white/10 rounded-3xl rounded-tl-sm flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-                <div className="w-2 h-2 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: '0.3s' }}></div>
-              </div>
+            <div className="text-sm text-gray-500 italic self-start bg-[#1e2430] p-4 rounded-2xl rounded-tl-sm shadow-sm">
+              {mode === 'image' ? 'Generating image...' : 'AI is thinking...'}
             </div>
           )}
         </div>
-      </main>
+      </div>
 
-      <footer className="p-4 sm:p-6 w-full flex justify-center bg-transparent shrink-0 z-10 pb-8 sm:pb-10">
-        <div className="flex w-full max-w-3xl gap-3 relative group">
+      <div className="p-6 w-full flex justify-center bg-[#11151c] shrink-0 border-t border-gray-800">
+        <div className="flex w-full max-w-4xl gap-4">
           <input 
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Message the AI..." 
-            className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white rounded-2xl px-6 py-4 outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-slate-500 shadow-xl"
+            placeholder={mode === 'image' ? "Describe an image to generate..." : "Type your message..."} 
+            className="flex-1 bg-[#161b24] border border-gray-700 text-white rounded-full px-6 py-4 outline-none focus:border-gray-500 transition-colors placeholder-gray-500 text-sm shadow-inner"
           />
           <button 
             onClick={sendMessage}
-            disabled={isLoading || !input.trim()}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white border-none px-6 rounded-2xl cursor-pointer transition-all shadow-lg hover:shadow-indigo-500/25 flex items-center justify-center active:scale-95"
+            className="bg-[#3b82f6] text-white border-none px-8 py-4 rounded-full cursor-pointer font-semibold hover:bg-blue-500 transition-colors shadow-md"
           >
-            <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            Send
           </button>
         </div>
-      </footer>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-      `}} />
+      </div>
     </div>
   );
 }
